@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  grafana:
+    image: registry-docker.weg.net/grafana/grafana:12.0.1
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - k6net
+
+  prometheus:
+    image: registry-docker.weg.net/prom/prometheus:v3.4.1
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - k6net
+
+  k6:
+    image: registry-docker.weg.net/grafana/k6:1.0.0
+    container_name: k6
+    command: run /scripts/test.js
+    volumes:
+      - ./scripts:/scripts
+    environment:
+      - K6_PROMETHEUS_REMOTE_URL=http://prometheus:9090/api/v1/write
+      - K6_PROMETHEUS_REMOTE_WRITE=true
+    depends_on:
+      - prometheus
+    networks:
+      - k6net
+
+volumes:
+  grafana-storage:
+    driver: local
+
+networks:
+  k6net:
+    driver: bridge
